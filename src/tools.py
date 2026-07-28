@@ -41,10 +41,6 @@ def _load_orders_data() -> List[Dict[str, str]]:
             với keys tương ứng tên cột trong file CSV.
             Trả về list rỗng nếu file không tồn tại hoặc có lỗi đọc.
 
-    Raises:
-        FileNotFoundError: Nếu file CSV không tồn tại tại đường dẫn DATASET_PATH.
-        csv.Error: Nếu có lỗi khi parse file CSV.
-
     Example:
         >>> orders = _load_orders_data()
         >>> print(f"Tổng số đơn hàng: {len(orders)}")
@@ -57,6 +53,12 @@ def _load_orders_data() -> List[Dict[str, str]]:
             for row in reader:
                 orders.append(row)
     except FileNotFoundError:
+        return []
+    except csv.Error:
+        return []
+    except UnicodeDecodeError:
+        return []
+    except Exception:
         return []
     return orders
 
@@ -129,8 +131,14 @@ def search_order_by_id(order_id: str) -> str:
     See Also:
         check_return_eligibility: Kiểm tra điều kiện đổi trả của đơn hàng.
     """
+    if not order_id or not isinstance(order_id, str):
+        return "LỖI: Mã đơn hàng không hợp lệ"
+
     orders = _load_orders_data()
-    order_id_upper = order_id.upper()
+    if not orders:
+        return "LỖI: Không thể đọc dữ liệu đơn hàng. Vui lòng thử lại sau."
+
+    order_id_upper = order_id.strip().upper()
 
     for order in orders:
         if order.get("order_id", "").upper() == order_id_upper:
@@ -257,8 +265,14 @@ def check_return_eligibility(order_id: str) -> str:
     See Also:
         search_order_by_id: Tra cứu thông tin chi tiết đơn hàng.
     """
+    if not order_id or not isinstance(order_id, str):
+        return "LỖI: Mã đơn hàng không hợp lệ"
+
     orders = _load_orders_data()
-    order_id_upper = order_id.upper()
+    if not orders:
+        return "LỖI: Không thể đọc dữ liệu đơn hàng. Vui lòng thử lại sau."
+
+    order_id_upper = order_id.strip().upper()
 
     for order in orders:
         if order.get("order_id", "").upper() == order_id_upper:
@@ -273,9 +287,11 @@ def check_return_eligibility(order_id: str) -> str:
                     f"Ngày: '{delivered_date_str}'"
                 )
 
-            # Tính số ngày kể từ ngày giao hàng đến hiện tại
-            today = datetime.now()
-            days_since_delivery = (today - delivered_date).days
+            try:
+                today = datetime.now()
+                days_since_delivery = (today - delivered_date).days
+            except Exception:
+                days_since_delivery = 0
 
             # Parse thông tin đơn hàng
             try:
