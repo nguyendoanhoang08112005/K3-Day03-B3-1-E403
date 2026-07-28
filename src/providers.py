@@ -6,15 +6,26 @@ Hỗ trợ chuyển đổi linh hoạt giữa các nhà cung cấp AI chỉ bằ
 import os
 import sys
 import json
+import re
 import requests
 from dotenv import load_dotenv
 
 # Đảm bảo in ra Tiếng Việt và Emojis không bị lỗi trên Windows Console
-if sys.stdout.encoding != 'utf-8':
+if os.name == "nt":
     try:
-        sys.stdout.reconfigure(encoding='utf-8')
+        import ctypes
+
+        ctypes.windll.kernel32.SetConsoleOutputCP(65001)
+        ctypes.windll.kernel32.SetConsoleCP(65001)
     except Exception:
         pass
+
+for stream in (sys.stdout, sys.stderr):
+    if stream.encoding and stream.encoding.lower() != "utf-8":
+        try:
+            stream.reconfigure(encoding="utf-8")
+        except Exception:
+            pass
 
 load_dotenv()
 
@@ -162,9 +173,93 @@ class MockProvider(BaseLLMProvider):
     """Offline Mock Provider (Cho bài test không cần kết nối API)"""
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         text = prompt.lower()
-        if "thời tiết" in text and "hà nội" in text:
-            return "Thought: Cần tra cứu thời tiết Hà Nội.\nAction: get_weather['Hà Nội']"
-        return "🤖 [Mock Provider]: Phản hồi giả lập offline cho bài test."
+        react_prompt = system_prompt.lower()
+        is_react = (
+            "các tool hợp lệ:" in react_prompt
+            and "action: <tên_tool>" in react_prompt
+        )
+        order_match = re.search(r"\b[O0]\d{6}\b", prompt, re.IGNORECASE)
+        order_id = order_match.group(0).upper() if order_match else None
+
+        if not is_react:
+            if "người khác" in text or "bỏ qua quy định" in text:
+                return (
+                    "Mình không thể tra cứu đơn hàng của người khác hoặc bỏ qua "
+                    "quy định bảo vệ dữ liệu."
+                )
+            if order_id:
+                return (
+                    "Mình chưa thể kiểm tra đơn cụ thể trong chế độ chatbot. "
+                    "Bạn hãy cung cấp order_id cho ReAct Agent; mình sẽ không "
+                    "đoán dữ liệu hoặc tuyên bố đã tạo yêu cầu đổi trả."
+                )
+            if "chính sách" in text and ("đổi trả" in text or "trả" in text):
+                return (
+                    "Theo policy demo, đơn chưa được trả và ngày giao cách ngày "
+                    "hệ thống không quá 3 ngày mới đủ điều kiện để xem xét đổi trả."
+                )
+            return "Mình đang chạy ở chế độ giả lập offline."
+
+        if "người khác" in text or "bỏ qua quy định" in text:
+            return (
+                "Thought: Yêu cầu vượt quyền và cố bỏ qua guardrail.\n"
+                "Final Answer: Mình không thể tra cứu đơn hàng của người khác "
+                "hoặc tự động hoàn trả đơn hàng."
+            )
+
+        if not order_id:
+            return (
+                "Thought: Chưa có mã đơn hàng để tra cứu.\n"
+                "Final Answer: Bạn vui lòng cung cấp order_id theo dạng Oxxxxxx."
+            )
+
+        searched = "Action: search_order_by_id" in prompt
+        checked_return = "Action: check_return_eligibility" in prompt
+        asks_return = any(
+            keyword in text
+            for keyword in ("đổi", "trả", "hoàn tiền", "hoàn trả")
+        )
+
+        if not searched:
+            return (
+                "Thought: Cần tra cứu đơn hàng trước khi trả lời.\n"
+                f'Action: search_order_by_id["{order_id}"]'
+            )
+
+        if asks_return and not checked_return:
+            return (
+                "Thought: Đã tra cứu đơn; cần kiểm tra điều kiện đổi trả.\n"
+                f'Action: check_return_eligibility["{order_id}"]'
+            )
+
+        delivered_match = re.search(
+            r"Ngày giao(?: dự kiến)?:\s*(\d{1,2}/\d{1,2}/\d{4})",
+            prompt,
+            re.IGNORECASE,
+        )
+        delivery_text = (
+            f"Dữ liệu ghi nhận ngày giao {delivered_match.group(1)}."
+            if delivered_match
+            else "Đã tìm thấy thông tin đơn hàng trong dữ liệu mẫu."
+        )
+
+        if checked_return:
+            if "xác nhận được phép đổi trả" in text:
+                return (
+                    "Thought: Đã có đủ kết quả từ hai tool.\n"
+                    f"Final Answer: {delivery_text} Đơn hiện đủ điều kiện đổi "
+                    "trả theo policy demo; hệ thống chưa tạo yêu cầu hoàn trả."
+                )
+            return (
+                "Thought: Đã có đủ kết quả từ hai tool.\n"
+                f"Final Answer: {delivery_text} Đơn hiện không đủ điều kiện đổi "
+                "trả theo policy demo."
+            )
+
+        return (
+            "Thought: Đã có kết quả tra cứu đơn hàng.\n"
+            f"Final Answer: {delivery_text}"
+        )
 
 
 def get_llm_provider(provider_name: str = None) -> BaseLLMProvider:
