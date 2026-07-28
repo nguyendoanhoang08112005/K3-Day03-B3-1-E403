@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VinUni Lab 3: Chatbot vs ReAct Agent</title>
+    <!-- Google Fonts & Material Rounded Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Rounded:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <link rel="stylesheet" href="style.css">
+</head>
+
+<body class="dark-mode">
+    <div class="app-container">
+
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-header">
+                <div class="logo-container">
+                    <span class="material-symbols-rounded logo-icon">school</span>
+                    <div class="logo-text">
+                        <h1>VinUni Lab 3</h1>
+                        <p>Customer Care Agent</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- MODE SELECTOR -->
+            <div class="section-title">CHẾ ĐỘ HOẠT ĐỘNG</div>
+            <div class="mode-selector">
+                <button id="btn-chatbot" class="mode-btn active" data-mode="chatbot">
+                    <span class="material-symbols-rounded icon-green">chat_bubble</span>
+                    <div class="mode-btn-text">
+                        <span class="title">Chatbot Baseline</span>
+                        <span class="desc">Chỉ trả lời câu hỏi chung (Không Tool)</span>
+                    </div>
+                </button>
+                <button id="btn-react" class="mode-btn" data-mode="react">
+                    <span class="material-symbols-rounded icon-purple">psychology</span>
+                    <div class="mode-btn-text">
+                        <span class="title">ReAct Agent</span>
+                        <span class="desc">Có Tool, tra cứu DB thực tế</span>
+                    </div>
+                </button>
+            </div>
+
+            <!-- TEST CASES PRESETS -->
+            <div class="section-title">BỘ TEST CASES (ROLE 1)</div>
+            <div class="test-cases-list" id="test-cases-container">
+                <!-- Dynamically populated -->
+                <div class="loader-tc">Đang tải test cases...</div>
+            </div>
+
+            <div class="sidebar-footer">
+                <div class="server-status">
+                    <span class="status-dot online"></span>
+                    <span>Gemini Provider Connected</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <main class="main-content">
+            <header class="top-bar">
+                <div class="current-mode-info">
+                    <span class="material-symbols-rounded" id="current-mode-icon">chat_bubble</span>
+                    <div>
+                        <h2 id="current-mode-title">Chatbot Baseline Mode</h2>
+                        <p id="current-mode-desc">Mô hình phản hồi trực tiếp không truy cập kho dữ liệu đơn hàng.</p>
+                    </div>
+                </div>
+                <div class="header-actions">
+                    <button class="clear-btn" id="btn-clear-chat" title="Xóa lịch sử chat">
+                        <span class="material-symbols-rounded">delete_sweep</span>
+                        <span>Xóa lịch sử</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- CHAT AREA -->
+            <section class="chat-container">
+                <div class="chat-messages" id="chat-messages-container">
+                    <!-- Default Welcome screen when no message -->
+                    <div class="welcome-screen" id="welcome-screen">
+                        <span class="material-symbols-rounded welcome-icon">smart_toy</span>
+                        <h2>Trợ lý đổi trả đơn hàng VinUni</h2>
+                        <p>Chào mừng bạn! Hãy chọn một chế độ hoạt động ở cột bên trái, gõ câu hỏi hoặc nhấp vào bất kỳ
+                            Test Case mẫu nào để xem cách mô hình phản hồi.</p>
+
+                        <div class="features-grid">
+                            <div class="feature-card card-green">
+                                <span class="material-symbols-rounded">chat_bubble_outline</span>
+                                <h3>Chatbot Baseline</h3>
+                                <p>Sử dụng tri thức sẵn có của LLM để trả lời các câu hỏi về quy định chung. Bị chặn nếu
+                                    hỏi thông tin đơn hàng cụ thể.</p>
+                            </div>
+                            <div class="feature-card card-purple">
+                                <span class="material-symbols-rounded">mediation</span>
+                                <h3>ReAct Agent Loop</h3>
+                                <p>Hoạt động theo vòng lặp <strong>Thought ➔ Action ➔ Observation</strong>. Tự gọi tool
+                                    tra cứu đơn hàng và kiểm tra điều kiện trả hàng thực tế.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- INPUT PANEL -->
+                <div class="input-panel">
+                    <form id="chat-form" class="input-form">
+                        <div class="input-wrapper">
+                            <textarea id="chat-input" placeholder="Hỏi bất kỳ điều gì hoặc nhập mã đơn hàng..."
+                                rows="1"></textarea>
+                            <button type="submit" id="btn-send" class="send-btn" disabled>
+                                <span class="material-symbols-rounded">send</span>
+                            </button>
+                        </div>
+                    </form>
+                    <div class="input-footer">
+                        <span>Nhấn <strong>Enter</strong> để gửi, <strong>Shift + Enter</strong> để xuống dòng. VinUni
+                            Lab 3 © 2026.</span>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Script file -->
+    <script src="script.js"></script>
+</body>
+
+</html>
