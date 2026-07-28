@@ -231,4 +231,19 @@ Final Answer: Mình chỉ có thể tra cứu đơn và kiểm tra điều kiệ
 không thể tạo hoặc giả vờ đã tạo yêu cầu.
 """.strip()
 
-
+# ---------------------------------------------------------------------------
+# GUARDRAILS CONFIG — Role 4 phải enforce
+# ---------------------------------------------------------------------------
+MAX_ITERATIONS: Final[int] = 4
+TIMEOUT_SECONDS: Final[int] = 10
+MAX_CONSECUTIVE_TOOL_ERRORS: Final[int] = 1
+MAX_IDENTICAL_ACTION_REPEATS: Final[int] = 0
+REQUIRE_LOOKUP_BEFORE_ELIGIBILITY: Final[bool] = True
+REDACT_INTERNAL_FIELDS: Final[frozenset[str]] = frozenset(
+    {"profit_margin", "customer_age", "customer_gender"}
+)
+SAFE_FALLBACK_MESSAGE: Final[str] = (
+    "Mình chưa thể xác minh đơn hàng từ tool demo. Vui lòng kiểm tra lại order_id; "
+    "mình sẽ không đoán dữ liệu, không tiết lộ field nội bộ và không tuyên bố đã "
+    "tạo yêu cầu đổi trả."
+)
