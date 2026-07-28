@@ -169,6 +169,36 @@ class OpenRouterProvider(BaseLLMProvider):
             return f"[OpenRouter Exception]: {str(e)}"
 
 
+class NvidiaProvider(BaseLLMProvider):
+    """NVIDIA NIM Provider (OpenAI-compatible API, nhiều model miễn phí)"""
+    def __init__(self, api_key: str = None, model: str = None):
+        self.api_key = api_key or os.getenv("NVIDIA_API_KEY")
+        self.model_name = model or os.getenv("LLM_MODEL") or "meta/llama-3.3-70b-instruct"
+
+    def generate(self, prompt: str, system_prompt: str = "") -> str:
+        if not self.api_key or self.api_key == "your_nvidia_api_key_here":
+            return "[NVIDIA Error]: Chưa cấu hình NVIDIA_API_KEY trong file .env!"
+        try:
+            import openai
+            client = openai.OpenAI(
+                base_url="https://integrate.api.nvidia.com/v1",
+                api_key=self.api_key
+            )
+            messages = []
+            if system_prompt:
+                messages.append({"role": "system", "content": system_prompt})
+            messages.append({"role": "user", "content": prompt})
+
+            response = client.chat.completions.create(
+                model=self.model_name,
+                messages=messages,
+                max_tokens=1024
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            return f"[NVIDIA Exception]: {str(e)}"
+
+
 class MockProvider(BaseLLMProvider):
     """Offline Mock Provider (Cho bài test không cần kết nối API)"""
     def generate(self, prompt: str, system_prompt: str = "") -> str:
@@ -274,6 +304,8 @@ def get_llm_provider(provider_name: str = None) -> BaseLLMProvider:
         return AnthropicProvider()
     elif name == "openrouter":
         return OpenRouterProvider()
+    elif name == "nvidia":
+        return NvidiaProvider()
     else:
         return MockProvider()
 

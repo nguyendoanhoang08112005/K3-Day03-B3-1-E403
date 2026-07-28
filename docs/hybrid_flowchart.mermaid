@@ -1,0 +1,25 @@
+flowchart TD
+    A([🧑 User Input]) --> B{Câu hỏi cần\ntra cứu đơn hàng?}
+
+    %% ── CHATBOT PATH ──────────────────────────────────────────
+    B -- Không\nVD: hỏi policy chung --> C[🤖 Chatbot Baseline]
+    C --> D([💬 Trả lời trực tiếp\ntừ kiến thức có sẵn])
+
+    %% ── REACT AGENT PATH ──────────────────────────────────────
+    B -- Có\nVD: tra đơn, kiểm tra đổi trả --> E[🧠 ReAct Agent]
+    E --> F[Thought: Phân tích\ncâu hỏi cần tool nào]
+
+    F --> G{Cần tool nào?}
+    G -- Tra cứu đơn hàng --> H[🛠️ Action:\nsearch_order_by_id\norder_id]
+    G -- Kiểm tra đổi trả --> I[🛠️ Action:\ncheck_return_eligibility\norder_id]
+
+    H --> J[👁️ Observation:\nThông tin đơn hàng]
+    I --> K[👁️ Observation:\nKết quả eligibility]
+
+    J --> L{Đủ thông tin\nđể trả lời?}
+    K --> L
+
+    L -- Chưa đủ &\nchưa hết vòng lặp --> F
+    L -- LỖI trong\nObservation --> M[🛡️ Guardrail:\nDừng, báo lỗi lịch sự]
+    L -- Hết MAX_ITERATIONS --> M
+    L -- Đủ rồi --> N([✅ Final Answer\ncho người dùng])
