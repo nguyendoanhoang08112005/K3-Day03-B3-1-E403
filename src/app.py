@@ -19,9 +19,16 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # Import các thành phần từ file của Role 2, Role 3 & Multi-Provider Adapter
-from tools import AVAILABLE_TOOLS, get_weather, search_flights
-from prompts import CHATBOT_BASELINE_PROMPT, REACT_SYSTEM_PROMPT, MAX_ITERATIONS
+from tools import AVAILABLE_TOOLS
+from prompts import CHATBOT_BASELINE_PROMPT
 from providers import get_llm_provider
+
+# Import an toàn các biến ReAct (sẽ được Role 3 bổ sung ở Mốc 3)
+try:
+    from prompts import REACT_SYSTEM_PROMPT, MAX_ITERATIONS
+except ImportError:
+    REACT_SYSTEM_PROMPT = ""
+    MAX_ITERATIONS = 3
 
 load_dotenv()
 
@@ -48,34 +55,17 @@ def run_baseline_chatbot(user_query: str, provider):
     # Gọi LLM Provider thực hiện sinh câu trả lời
     response = provider.generate(user_query, system_prompt=CHATBOT_BASELINE_PROMPT)
     print(f"🤖 Chatbot trả lời:\n{response}")
+    print("-" * 50)
 
 
 def run_react_agent(user_query: str, provider):
     """
     Dựng vòng lặp ReAct Agent (Thought -> Action -> Observation) có Guardrails.
+    (Sẽ được hiện thực hóa ở Mốc 3)
     """
     print(f"\n🤖 [REACT AGENT] Câu hỏi: {user_query}")
-    step = 0
-    
-    while step < MAX_ITERATIONS:
-        step += 1
-        print(f"\n--- 🔄 Vòng lặp ReAct (Step {step}/{MAX_ITERATIONS}) ---")
-        
-        if step == 1:
-            print("🧠 Thought: Câu hỏi này cần tra cứu thời tiết thời gian thực.")
-            print("🛠️ Action: get_weather['Hà Nội']")
-            
-            # Thực thi tool
-            obs = get_weather("Hà Nội")
-            print(f"👁️ Observation: {obs}")
-            
-        elif step == 2:
-            print("🧠 Thought: Tôi đã có thông tin thời tiết Hà Nội, giờ tôi có thể tư vấn trang phục.")
-            print("🏁 Final Answer: Thời tiết Hà Nội hôm nay 28°C, nắng nhẹ. Bạn nên mặc áo phông thoáng mát!")
-            break
-            
-    if step >= MAX_ITERATIONS:
-        print(f"🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
+    print("⏳ Vòng lặp ReAct Agent thực tế sẽ được lập trình và hoàn thiện ở Mốc 3.")
+    print("-" * 50)
 
 
 if __name__ == "__main__":
@@ -91,11 +81,11 @@ if __name__ == "__main__":
     tests = load_test_cases()
     print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
     
-    # Chạy thử câu test số 3
+    print("--- DEMO 1: CHẠY BỘ TEST CASES TRÊN CHATBOT BASELINE ---")
+    for test in tests:
+        print(f"\nCase #{test['id']} [{test['category']}]")
+        run_baseline_chatbot(test["question"], provider)
+        
+    print("\n--- DEMO 2: CHẠY TRÊN REACT AGENT (MỐC 3) ---")
     sample_query = tests[2]["question"]
-    
-    print("--- DEMO 1: CHẠY TRÊN CHATBOT BASELINE ---")
-    run_baseline_chatbot(sample_query, provider)
-    
-    print("\n--- DEMO 2: CHẠY TRÊN REACT AGENT ---")
     run_react_agent(sample_query, provider)
