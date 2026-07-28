@@ -37,31 +37,51 @@ class BaseLLMProvider:
 
 class GeminiProvider(BaseLLMProvider):
     """Google Gemini Provider"""
+    _last_request_time = 0.0
+    
     def __init__(self, api_key: str = None, model: str = None):
         self.api_key = api_key or os.getenv("GEMINI_API_KEY")
-        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-2.5-flash"
+        self.model_name = model or os.getenv("LLM_MODEL") or "gemini-flash-latest"
         
     def generate(self, prompt: str, system_prompt: str = "") -> str:
         if not self.api_key or self.api_key == "your_gemini_api_key_here":
             return "[Gemini Error]: Chưa cấu hình GEMINI_API_KEY trong file .env!"
-        try:
-            from google import genai
-            client = genai.Client(api_key=self.api_key)
-            contents = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
-            response = client.models.generate_content(
-                model=self.model_name,
-                contents=contents
-            )
-            return response.text
-        except Exception as e:
-            error_message = str(e)
-            if "429" in error_message and "RESOURCE_EXHAUSTED" in error_message:
-                return (
-                    "[Gemini Quota Error]: Đã chạm giới hạn request của project "
-                    "cho model hiện tại. Hãy chờ quota reset, đổi model/project "
-                    "còn quota hoặc bật billing."
+        
+        import time
+        # Hạn mức Free Tier là 5 RPM -> Giãn cách tối thiểu 12 giây giữa các request
+        min_interval = 12.0
+        current_time = time.time()
+        elapsed = current_time - GeminiProvider._last_request_time
+        if elapsed < min_interval:
+            sleep_time = min_interval - elapsed
+            print(f"\n⏳ [Cooldown] Chờ {sleep_time:.1f} giây để tránh Rate Limit (5 RPM)...")
+            time.sleep(sleep_time)
+            
+        max_retries = 3
+        wait_seconds = 15
+        
+        for attempt in range(max_retries):
+            try:
+                # Cập nhật thời điểm gửi request
+                GeminiProvider._last_request_time = time.time()
+                from google import genai
+                client = genai.Client(api_key=self.api_key)
+                contents = f"{system_prompt}\n\n{prompt}" if system_prompt else prompt
+                response = client.models.generate_content(
+                    model=self.model_name,
+                    contents=contents
                 )
-            return f"[Gemini Exception]: {error_message}"
+                return response.text
+            except Exception as e:
+                err_str = str(e)
+                if "429" in err_str or "RESOURCE_EXHAUSTED" in err_str:
+                    print(f"\n⚠️ Gemini Rate Limit (429). Đang chờ {wait_seconds} giây trước khi thử lại (Lần {attempt+1}/{max_retries})...")
+                    time.sleep(wait_seconds)
+                    wait_seconds += 5  # Tăng thời gian chờ cho lần sau
+                    continue
+                return f"[Gemini Exception]: {err_str}"
+        
+        return "[Gemini Error]: Vượt quá số lần thử lại sau lỗi rate limit 429."
 
 
 class OpenAIProvider(BaseLLMProvider):
